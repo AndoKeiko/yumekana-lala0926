@@ -1,38 +1,54 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\UsersController;
+use App\Http\Controllers\GoalsController;
+use App\Http\Controllers\TaskController;
 
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| contains the "web" middleware group. Now create something great!
-|
-*/
-
+// 認証不要のルート
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+    return Inertia::render('Welcome');
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [LoginController::class, 'login']);
+Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register');
+Route::post('/register', [RegisterController::class, 'register']);
 
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+// 認証が必要なルート
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+
+    Route::get('/dashboard', function () {
+        return Inertia::render('Dashboard');
+    })->name('dashboard');
+
+    // Users関連のルート
+    Route::get('/profile', [UsersController::class, 'show'])->name('profile');
+    Route::put('/profile', [UsersController::class, 'update'])->name('profile.update');
+
+    // Goals関連のルート
+    Route::get('/goals', [GoalsController::class, 'index'])->name('goals.index');
+    Route::get('/goals/create', [GoalsController::class, 'create'])->name('goals.create');
+    Route::post('/goals', [GoalsController::class, 'store'])->name('goals.store');
+    Route::get('/goals/{goal}', [GoalsController::class, 'show'])->name('goals.show');
+    Route::get('/goals/{goal}/edit', [GoalsController::class, 'edit'])->name('goals.edit');
+    Route::put('/goals/{goal}', [GoalsController::class, 'update'])->name('goals.update');
+    Route::delete('/goals/{goal}', [GoalsController::class, 'destroy'])->name('goals.destroy');
+
+    // Tasks関連のルート
+    Route::get('/goals/{goal}/tasks', [TaskController::class, 'index'])->name('tasks.index');
+    Route::post('/goals/{goal}/tasks', [TaskController::class, 'store'])->name('tasks.store');
+    Route::put('/goals/{goal}/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
+    Route::delete('/goals/{goal}/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
 });
 
-require __DIR__.'/auth.php';
+// API用のルート（必要な場合）
+Route::prefix('api')->middleware('auth:sanctum')->group(function () {
+    Route::put('/tasks/order', [TaskController::class, 'updateOrder']);
+    Route::put('/tasks/{task}/elapsed-time', [TaskController::class, 'updateElapsedTime']);
+    Route::put('/tasks/{task}/review-interval', [TaskController::class, 'updateReviewInterval']);
+});
